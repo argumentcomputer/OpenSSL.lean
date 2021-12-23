@@ -27,26 +27,41 @@
       let
         leanPkgs = lean.packages.${system};
         pkgs = nixpkgs.legacyPackages.${system};
-        inherit (lib.${system}) buildCLib;
+        inherit (lib.${system}) buildCLib concatStringsSep;
+        includes = [ "${pkgs.openssl.dev}/include" "${leanPkgs.lean-bin-tools-unwrapped}/include" ];
+        INCLUDE_PATH = concatStringsSep ":" includes;
+        libssl = (pkgs.openssl.out // {
+          name = "lib/libssl.so";
+          linkName = "ssl";
+          libName = "libssl.so";
+        });
         c-shim = buildCLib {
+          updateCCOptions = d: d ++ (map (i: "-I${i}") includes);
           name = "lean-openssl-bindings";
-          staticLibDeps = [ pkgs.openssl ];
-          src = ./c;
+          sharedLibDeps = [
+            libssl
+          ];
+          src = ./bindings;
+          extraDrvArgs = {
+            linkName = "lean-openssl-bindings";
+          };
         };
         name = "Openssl";  # must match the name of the top-level .lean file
-        project = leanPkgs.buildLeanPackage {
-          inherit name;
-          # deps = [ lean-ipld.project.${system} ];
-          # Where the lean files are located
-          nativeSharedLibs = [ c-shim ];
-          src = ./src;
-        };
-        test = leanPkgs.buildLeanPackage {
-          name = "Tests";
-          deps = [ project ];
-          # Where the lean files are located
-          src = ./test;
-        };
+        project = leanPkgs.buildLeanPackage
+          {
+            inherit name;
+            # deps = [ lean-ipld.project.${system} ];
+            # Where the lean files are located
+            nativeSharedLibs = [ (libssl // { __toString = d: "${libssl}/lib"; }) c-shim ];
+            src = ./src;
+          };
+        test = leanPkgs.buildLeanPackage
+          {
+            name = "Tests";
+            deps = [ project ];
+            # Where the lean files are located
+            src = ./test;
+          };
         joinDepsDerivationns = getSubDrv:
           pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([ project ] ++ project.allExternalDeps));
       in
@@ -66,6 +81,8 @@
           ];
           LEAN_PATH = joinDepsDerivationns (d: d.modRoot);
           LEAN_SRC_PATH = joinDepsDerivationns (d: d.src);
+          C_INCLUDE_PATH = INCLUDE_PATH;
+          CPLUS_INCLUDE_PATH = INCLUDE_PATH;
         };
       });
 }
