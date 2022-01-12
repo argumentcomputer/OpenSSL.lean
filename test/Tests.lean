@@ -1,8 +1,12 @@
-import Openssl
+import OpenSSL
+
+open OpenSSL
 
 def main (args : List String) : IO UInt32 := do
   try
-    Openssl.sayHello "world"
+    OpenSSL.initLib ()
+    let ctx ← Context.init ()
+    let ssl ← ctx.initSSL
     pure 0
   catch e =>
     IO.eprintln <| "error: " ++ toString e -- avoid "uncaught exception: ..."

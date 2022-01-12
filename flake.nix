@@ -1,5 +1,5 @@
 {
-  description = "Openssl bindings for Lean";
+  description = "OpenSSL bindings for Lean";
 
   inputs = {
     lean = {
@@ -28,12 +28,14 @@
         leanPkgs = lean.packages.${system};
         pkgs = nixpkgs.legacyPackages.${system};
         inherit (lib.${system}) buildCLib concatStringsSep;
-        includes = [ "${pkgs.openssl.dev}/include" "${leanPkgs.lean-bin-tools-unwrapped}/include" ];
+        includes = 
+          [ "${pkgs.openssl.dev}/include" "${leanPkgs.lean-bin-tools-unwrapped}/include" ./bindings ];
         INCLUDE_PATH = concatStringsSep ":" includes;
         libssl = (pkgs.openssl.out // {
           name = "lib/libssl.so";
           linkName = "ssl";
           libName = "libssl.so";
+          __toString = d: "${d.out}/lib";
         });
         c-shim = buildCLib {
           updateCCOptions = d: d ++ (map (i: "-I${i}") includes);
@@ -46,15 +48,23 @@
             linkName = "lean-openssl-bindings";
           };
         };
+        c-shim-debug = c-shim.override {
+          debug = true;
+          updateCCOptions = d: d ++ (map (i: "-I${i}") includes) ++ [ "-O0" ];
+        };
         name = "OpenSSL";  # must match the name of the top-level .lean file
         project = leanPkgs.buildLeanPackage
           {
             inherit name;
             # deps = [ lean-ipld.project.${system} ];
             # Where the lean files are located
-            nativeSharedLibs = [ (libssl // { __toString = d: "${libssl}/lib"; }) c-shim ];
+            nativeSharedLibs = [ libssl c-shim ];
             src = ./src;
           };
+        project-debug = project.override {
+          debug = true;
+          nativeSharedLibs = [ libssl c-shim-debug ];
+        };
         test = leanPkgs.buildLeanPackage
           {
             name = "Tests";
@@ -62,6 +72,10 @@
             # Where the lean files are located
             src = ./test;
           };
+        test-debug = test.override {
+          debug = true;
+          deps = [ project-debug ];
+        };
         joinDepsDerivationns = getSubDrv:
           pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([ project ] ++ project.allExternalDeps));
       in
@@ -69,6 +83,8 @@
         inherit project test;
         packages = {
           ${name} = project.executable;
+          test = test.executable;
+          test-debug = test-debug.executable;
         };
 
         checks.test = test.executable;
