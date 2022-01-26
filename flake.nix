@@ -46,7 +46,7 @@
             linkName = "lean-openssl-bindings";
           };
         };
-        name = "Openssl";  # must match the name of the top-level .lean file
+        name = "OpenSSL";  # must match the name of the top-level .lean file
         project = leanPkgs.buildLeanPackage
           {
             inherit name;

@@ -1,5 +1,5 @@
 
-namespace Openssl
+namespace OpenSSL
 
 constant SslClientPointed : PointedType
 
