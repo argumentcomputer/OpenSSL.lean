@@ -94,6 +94,12 @@ Read from connection.
 @[extern "lean_ssl_read"]
 constant read: @& SSL → USize → IO (Bool × ByteArray)
 
+/-
+Get error.
+-/
+@[extern "lean_ssl_get_error"]
+constant getError: @& SSL → UInt32 → IO UInt32
+
 end SSL
 
 -- BIO
@@ -126,6 +132,19 @@ Initialize a BIO struct.
 -/
 @[extern "lean_bio_init"]
 constant init : Unit → IO BIO
+
+/-
+Write to BIO.
+-/
+@[extern "lean_bio_write"]
+constant write: @& BIO → @& ByteArray → IO Unit
+
+/-
+Read from connection.
+-/
+@[extern "lean_bio_read"]
+constant read: @& BIO → USize → IO (Bool × ByteArray)
+
 
 end BIO
 

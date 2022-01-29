@@ -211,6 +211,16 @@ lean_obj_res lean_ssl_set_wbio(b_lean_obj_arg l_ssl, b_lean_obj_arg l_bio)
   return lean_io_result_mk_ok(lean_box(0));
 }
 
+/**
+ * SSL.getError : @& SSL → UInt32 → IO Unit
+ */
+lean_obj_res lean_ssl_get_error(b_lean_obj_arg l_ssl, uint32_t ret)
+{
+  SSL* ssl = lean_get_external_data(l_ssl);
+  int code = SSL_get_error(ssl, ret);
+  return lean_io_result_mk_ok(lean_box(code));
+}
+
 // BIO
 
 static inline void bio_finalize(void *bio)
