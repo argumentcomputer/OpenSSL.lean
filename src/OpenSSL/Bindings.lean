@@ -5,7 +5,9 @@ namespace OpenSSL
 Initialize the OpenSSL library.
 -/
 @[extern "lean_ssl_lib_init"]
-constant initLib: Unit → IO Unit
+private constant initLib: Unit → IO Unit
+
+builtin_initialize initLib ()
 
 constant ContextPointed : PointedType
 

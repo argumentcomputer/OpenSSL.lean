@@ -15,8 +15,8 @@
   outputs = { self, lean, utils, nixpkgs }:
     let
       supportedSystems = [
-        # "aarch64-linux"
-        # "aarch64-darwin"
+        "aarch64-linux"
+        "aarch64-darwin"
         "i686-linux"
         "x86_64-darwin"
         "x86_64-linux"
@@ -77,12 +77,13 @@
           deps = [ project-debug ];
         };
         joinDepsDerivationns = getSubDrv:
-          pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") ([ project ] ++ project.allExternalDeps));
+          pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") (project.allExternalDeps));
       in
       {
         inherit project test;
         packages = {
           ${name} = project.executable;
+          inherit (project) lean-package;
           test = test.executable;
           test-debug = test-debug.executable;
         };
@@ -93,10 +94,10 @@
         devShell = pkgs.mkShell {
           inputsFrom = [ project.executable ];
           buildInputs = with pkgs; [
-            leanPkgs.lean
+            leanPkgs.lean-dev
           ];
-          LEAN_PATH = joinDepsDerivationns (d: d.modRoot);
-          LEAN_SRC_PATH = joinDepsDerivationns (d: d.src);
+          LEAN_PATH = "./src:./test:" + joinDepsDerivationns (d: d.modRoot);
+          LEAN_SRC_PATH = "./src:./test:" + joinDepsDerivationns (d: d.src);
           C_INCLUDE_PATH = INCLUDE_PATH;
           CPLUS_INCLUDE_PATH = INCLUDE_PATH;
         };
