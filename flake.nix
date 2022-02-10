@@ -53,22 +53,27 @@
           updateCCOptions = d: d ++ (map (i: "-I${i}") includes) ++ [ "-O0" ];
         };
         name = "OpenSSL";  # must match the name of the top-level .lean file
-        project = leanPkgs.buildLeanPackage
+        OpenSSL = leanPkgs.buildLeanPackage
           {
             inherit name;
-            # deps = [ lean-ipld.project.${system} ];
             # Where the lean files are located
             nativeSharedLibs = [ libssl c-shim ];
             src = ./src;
           };
-        project-debug = project.override {
+        Cli = leanPkgs.buildLeanPackage
+          {
+            name = "OpenSSL.Cli";
+            deps = [ OpenSSL ];
+            src = ./src;
+          };
+        project-debug = OpenSSL.override {
           debug = true;
           nativeSharedLibs = [ libssl c-shim-debug ];
         };
         test = leanPkgs.buildLeanPackage
           {
             name = "Tests";
-            deps = [ project ];
+            deps = [ OpenSSL ];
             # Where the lean files are located
             src = ./test;
           };
@@ -76,28 +81,28 @@
           debug = true;
           deps = [ project-debug ];
         };
-        joinDepsDerivationns = getSubDrv:
-          pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") (project.allExternalDeps));
+        joinDepsDerivations = getSubDrv:
+          pkgs.lib.concatStringsSep ":" (map (d: "${getSubDrv d}") (OpenSSL.allExternalDeps));
       in
       {
-        inherit project test;
+        project = OpenSSL;
         packages = {
-          ${name} = project.executable;
-          inherit (project) lean-package;
+          inherit OpenSSL Cli;
+          inherit (OpenSSL) lean-package;
           test = test.executable;
           test-debug = test-debug.executable;
         };
 
         checks.test = test.executable;
 
-        defaultPackage = self.packages.${system}.${name};
+        defaultPackage = self.packages.${system}.Cli.executable;
         devShell = pkgs.mkShell {
-          inputsFrom = [ project.executable ];
+          inputsFrom = [ OpenSSL.executable ];
           buildInputs = with pkgs; [
             leanPkgs.lean-dev
           ];
-          LEAN_PATH = "./src:./test:" + joinDepsDerivationns (d: d.modRoot);
-          LEAN_SRC_PATH = "./src:./test:" + joinDepsDerivationns (d: d.src);
+          LEAN_PATH = "./src:./test:" + joinDepsDerivations (d: d.modRoot);
+          LEAN_SRC_PATH = "./src:./test:" + joinDepsDerivations (d: d.src);
           C_INCLUDE_PATH = INCLUDE_PATH;
           CPLUS_INCLUDE_PATH = INCLUDE_PATH;
         };

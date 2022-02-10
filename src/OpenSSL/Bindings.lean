@@ -9,11 +9,11 @@ private constant initLib: Unit → IO Unit
 
 builtin_initialize initLib ()
 
-constant ContextPointed : PointedType
+constant ContextPointed : NonemptyType
 
 def Context : Type := ContextPointed.type
 
-instance : Inhabited Context := ⟨ContextPointed.val⟩
+instance : Nonempty Context := ContextPointed.property
 
 /-
 Initialize a SSL context.
@@ -39,11 +39,11 @@ Check private key for SSL Context assuming it has been loaded.
 @[extern "lean_ssl_ctx_check_private_key"]
 constant Context.checkPrivateKey : @& Context → @& String → IO Bool
 
-constant SSLPointed : PointedType
+constant SSLPointed : NonemptyType
 
 def SSL : Type := SSLPointed.type
 
-instance : Inhabited SSL := ⟨SSLPointed.val⟩
+instance : Nonempty SSL := SSLPointed.property
 
 /-
 Initialize a SSL struct.
@@ -106,14 +106,14 @@ end SSL
 
 -- BIO
 
-constant BIOPointed : PointedType
+constant BIOPointed : NonemptyType
 
 /-
 Binary IO buffer
 -/
 def BIO : Type := BIOPointed.type
 
-instance : Inhabited BIO := ⟨BIOPointed.val⟩
+instance : Nonempty BIO := BIOPointed.property
 
 /-
 Set read BIO
