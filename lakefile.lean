@@ -3,7 +3,7 @@ open Lake DSL
 
 package OpenSSL {
   precompileModules := true
-  moreLinkArgs := #["-L", "-lssl", "-fPIC"]
+  moreLinkArgs := #["-L", "-lssl"]
 }
 
 @[defaultTarget]
@@ -19,7 +19,7 @@ target ffi.o (pkg : Package) : FilePath := do
   let srcJob ← inputFile <| pkg.dir / cDir / ffiSrc
   buildFileAfterDep oFile srcJob fun srcFile => do
     let flags := #["-I", (← getLeanIncludeDir).toString,
-      "-I", "/usr/include/openssl"]
+      "/usr/include/openssl", "-fPIC"]
     compileO ffiSrc oFile srcFile flags
 
 extern_lib ffi (pkg : Package) := do
