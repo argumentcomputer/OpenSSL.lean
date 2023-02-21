@@ -5,7 +5,7 @@
     lean = {
       url = github:leanprover/lean4;
     };
-    nixpkgs.url = github:nixos/nixpkgs/nixos-21.05;
+    nixpkgs.url = github:nixos/nixpkgs/nixos-unstable;
     utils = {
       url = github:yatima-inc/nix-utils;
       inputs.nixpkgs.follows = "nixpkgs";
@@ -29,7 +29,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         inherit (lib.${system}) buildCLib concatStringsSep;
         includes = 
-          [ "${pkgs.openssl.dev}/include" "${leanPkgs.lean-bin-tools-unwrapped}/include" ./bindings ];
+          [ "${pkgs.openssl.dev}/include" "${leanPkgs.lean-bin-tools-unwrapped}/include" ./native ];
         INCLUDE_PATH = concatStringsSep ":" includes;
         libssl = (pkgs.openssl.out // {
           name = "lib/libssl.so";
@@ -43,7 +43,7 @@
           sharedLibDeps = [
             libssl
           ];
-          src = ./bindings;
+          src = ./native;
           extraDrvArgs = {
             linkName = "lean-openssl-bindings";
           };
@@ -62,9 +62,9 @@
           };
         Cli = leanPkgs.buildLeanPackage
           {
-            name = "OpenSSL.Cli";
+            name = "Main";
             deps = [ OpenSSL ];
-            src = ./src;
+            src = ./.;
           };
         project-debug = OpenSSL.override {
           debug = true;
@@ -96,13 +96,17 @@
         checks.test = test.executable;
 
         defaultPackage = self.packages.${system}.Cli.executable;
-        devShell = pkgs.mkShell {
-          inputsFrom = [ OpenSSL.executable ];
+        devShells.default = pkgs.mkShell {
+          # inputsFrom = [ OpenSSL.executable ];
           buildInputs = with pkgs; [
-            leanPkgs.lean-dev
+            elan
+            openssl
+            pkg-config
+            # leanPkgs.lean-dev
           ];
-          LEAN_PATH = "./src:./test:" + joinDepsDerivations (d: d.modRoot);
-          LEAN_SRC_PATH = "./src:./test:" + joinDepsDerivations (d: d.src);
+          OPENSSL_DIR = "${pkgs.openssl.out}";
+          # LEAN_PATH = "./src:./test:" + joinDepsDerivations (d: d.modRoot);
+          # LEAN_SRC_PATH = "./src:./test:" + joinDepsDerivations (d: d.src);
           C_INCLUDE_PATH = INCLUDE_PATH;
           CPLUS_INCLUDE_PATH = INCLUDE_PATH;
         };
