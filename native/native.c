@@ -241,9 +241,9 @@ static lean_external_class *get_bio_class() {
 
 /**
  * Create a BIO* struct.
- * BIO.init : Unit → IO BIO
+ * BIO.init : IO BIO
  */
-lean_obj_res lean_bio_init(lean_obj_arg _a)
+lean_obj_res lean_bio_init()
 {
   BIO* bio = BIO_new(BIO_s_mem());
   return lean_io_result_mk_ok(lean_alloc_external(get_bio_class(), bio));
@@ -273,3 +273,62 @@ lean_obj_res lean_bio_write(b_lean_obj_arg l_bio, b_lean_obj_arg bs)
   return lean_io_result_mk_ok(lean_box(b));
 }
 
+// BIO ADDR
+
+static inline void bio_addr_finalize(void *bio)
+{
+  BIO_ADDR_free(bio);
+}
+
+static lean_external_class *g_bio_addr_class = 0;
+
+static lean_external_class *get_bio_addr_class() {
+  if (g_bio_addr_class == 0) {
+    g_bio_addr_class = lean_register_external_class(
+        &bio_addr_finalize, &foreach_noop
+    );
+  }
+  return g_bio_addr_class;
+}
+
+/**
+ * Create a BIO_ADDR* struct.
+ * BIO.init : IO BIO
+ */
+lean_obj_res lean_bio_addr_init()
+{
+  BIO_ADDR * addr = BIO_ADDR_new();
+  return lean_io_result_mk_ok(lean_alloc_external(get_bio_addr_class(), addr));
+}
+
+/**
+ * BIO.socket : UInt32 -> UInt32 -> UInt32 -> IO UInt32
+ */
+lean_obj_res lean_bio_socket(uint32_t domain, uint32_t socktype, uint32_t protocol)
+{
+  int i = BIO_socket(domain, socktype, protocol, 0);
+  if (i == BIO_R_INVALID_SOCKET) {
+    return lean_io_result_mk_error(lean_mk_string("Invalid socket"));
+  } else {
+    return lean_io_result_mk_ok(lean_box(i));
+  }
+}
+
+
+/**
+ * Socket.connect (sock : Socket) (addr : Addr) : IO UInt32
+ */
+lean_obj_res lean_bio_connect(uint32_t sock, b_lean_obj_arg addr)
+{
+  uint32_t res = BIO_connect(sock, lean_get_external_data(addr), BIO_SOCK_KEEPALIVE | BIO_SOCK_NONBLOCK);
+  return lean_io_result_mk_ok(lean_box(res));
+}
+
+/**
+ * Socket.close (socket : Socket) : IO UInt32
+ */
+lean_obj_res lean_bio_closesocket(uint32_t sock)
+{
+  uint32_t res = BIO_closesocket(sock);
+  return lean_io_result_mk_ok(lean_box(res));
+}
