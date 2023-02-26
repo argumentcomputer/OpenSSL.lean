@@ -15,29 +15,39 @@ def Context : Type := ContextPointed.type
 
 instance : Nonempty Context := ContextPointed.property
 
+namespace Context
+
 /--
 Initialize a SSL context.
 -/
 @[extern "lean_ssl_ctx_init"]
-opaque Context.init : IO Context
+opaque init : IO Context
 
 /--
 Use certificate file for SSL Context.
 -/
 @[extern "lean_ssl_ctx_use_certificate_file"]
-opaque Context.useCertificateFile : @& Context → @& String → IO Bool
+opaque useCertificateFile : @& Context → @& String → IO Bool
 
 /--
 Use private key file for SSL Context.
 -/
 @[extern "lean_ssl_ctx_use_private_key_file"]
-opaque Context.usePrivateKeyFile : @& Context → @& String → IO Bool
+opaque usePrivateKeyFile : @& Context → @& String → IO Bool
 
 /--
 Check private key for SSL Context assuming it has been loaded.
 -/
 @[extern "lean_ssl_ctx_check_private_key"]
-opaque Context.checkPrivateKey : @& Context → @& String → IO Bool
+opaque checkPrivateKey : @& Context → @& String → IO Bool
+
+/--
+Set default locations for trusted CA certificates.
+-/
+@[extern "lean_ssl_ctx_load_verify_locations"]
+opaque loadVerifyLocations : @& Context → @& String → @& String → IO Bool
+
+end Context
 
 opaque SSLPointed : NonemptyType
 
@@ -97,6 +107,12 @@ Read from connection.
 opaque read: @& SSL → USize → IO (Bool × ByteArray)
 
 /--
+Read from connection.
+-/
+@[extern "lean_ssl_verify_result"]
+opaque verifyResult: @& SSL → IO UInt64
+
+/--
 Get error.
 -/
 @[extern "lean_ssl_get_error"]
@@ -121,11 +137,16 @@ Set read BIO
 @[extern "lean_ssl_set_rbio"]
 opaque SSL.setReadBIO : @& SSL → @& BIO → IO Unit
 
-/--
-Set write BIO
+/--Set write BIO
 -/
 @[extern "lean_ssl_set_wbio"]
 opaque SSL.setWriteBIO : @& SSL → @& BIO → IO Unit
+
+/--
+Create a new SSL connection BIO
+-/
+@[extern "lean_bio_new_ssl_connect"]
+opaque Context.newSSLConnect: @& Context → IO BIO
 
 namespace BIO
 
@@ -137,6 +158,11 @@ BIO Address type wrapper around all socket addresses used by OpenSSL.
 def Addr : Type := AddrPointed.type
 
 instance : Nonempty Addr := AddrPointed.property
+
+/-- Initialize an empty BIO
+-/
+@[extern "lean_bio_init"]
+opaque init : IO BIO
 
 namespace Addr
 
@@ -160,6 +186,18 @@ Read from connection.
 @[extern "lean_bio_read"]
 opaque read: @& BIO → USize → IO (Bool × ByteArray)
 
+/--
+Get SSL from BIO.
+-/
+@[extern "lean_bio_get_ssl"]
+opaque getSSL: BIO → IO SSL
+
+/--
+Set hostname and optionally the port.
+-/
+@[extern "lean_bio_set_conn_hostname"]
+opaque setConnHostname: @& BIO → String → IO UInt32
+
 def Socket := UInt32
 
 /--
@@ -182,8 +220,14 @@ Close a socket.
 @[extern "lean_bio_closesocket"]
 opaque close : (socket : Socket) → IO UInt32
 
-
 end Socket
+
+/--
+Start the connection.
+-/
+@[extern "lean_bio_do_connect"]
+opaque doConnect : (bio : @& BIO) → IO UInt32
+
 
 end BIO
 

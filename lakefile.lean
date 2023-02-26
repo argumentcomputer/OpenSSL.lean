@@ -22,7 +22,7 @@ target ffi.o (pkg : Package) : FilePath := do
   let srcJob ← inputFile <| pkg.dir / cDir / ffiSrc
   buildFileAfterDep oFile srcJob fun srcFile => do
     let flags := #["-I", (← getLeanIncludeDir).toString,
-      "-I", (<- IO.getEnv "C_INCLUDE_PATH").getD "", "-fPIC"]
+      "-I", (<- IO.getEnv "C_INCLUDE_PATH").getD "", "-fPIC", "-g"]
     compileO ffiSrc oFile srcFile flags
 
 target ffi (pkg : Package) : FilePath := do

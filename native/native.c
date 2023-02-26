@@ -24,7 +24,6 @@ lean_obj_res lean_ssl_lib_init(lean_obj_arg _u)
   SSL_library_init();
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
-  ERR_load_BIO_strings();
   ERR_load_crypto_strings();
   return lean_io_result_mk_ok(lean_box(0));
 }
@@ -56,7 +55,7 @@ lean_obj_res lean_ssl_ctx_init(b_lean_obj_arg _a)
   /* create the SSL server context */
   SSL_CTX* ctx = SSL_CTX_new(SSLv23_method());
   if (!ctx) {
-    return lean_io_result_mk_error(lean_mk_string("SSL_CTX_new() failed"));
+    return lean_io_result_mk_error(lean_mk_io_error_other_error(0, lean_mk_string("SSL_CTX_new() failed")));
   }
   /* Recommended to avoid SSLv2 & SSLv3 */
   SSL_CTX_set_options(ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
@@ -93,6 +92,16 @@ lean_obj_res lean_ssl_ctx_check_private_key(b_lean_obj_arg l_ctx, b_lean_obj_arg
 {
   SSL_CTX* ctx = lean_get_external_data(l_ctx);
   bool res = SSL_CTX_check_private_key(ctx);
+  return lean_io_result_mk_ok(lean_box(res));
+}
+
+/**
+ * Context.loadVerifyLocations : @& Context → @& String → @& String → IO Bool
+ */
+lean_obj_res lean_ssl_ctx_load_verify_locations(b_lean_obj_arg l_ctx, b_lean_obj_arg cafile, b_lean_obj_arg capath)
+{
+  SSL_CTX* ctx = lean_get_external_data(l_ctx);
+  bool res = SSL_CTX_load_verify_locations(ctx, lean_string_cstr(cafile), lean_string_cstr(capath));
   return lean_io_result_mk_ok(lean_box(res));
 }
 
@@ -221,11 +230,21 @@ lean_obj_res lean_ssl_get_error(b_lean_obj_arg l_ssl, uint32_t ret)
   return lean_io_result_mk_ok(lean_box(code));
 }
 
+/**
+ * SSL.verifyResult : SSL → IO UInt64
+ */
+lean_obj_res lean_ssl_verify_result(lean_obj_arg l_ssl)
+{
+  SSL* ssl = lean_get_external_data(l_ssl);
+  long code = SSL_get_verify_result(ssl);
+  return lean_io_result_mk_ok(lean_box(code));
+}
+
 // BIO
 
 static inline void bio_finalize(void *bio)
 {
-  BIO_free(bio);
+  BIO_free_all(bio);
 }
 
 static lean_external_class *g_bio_class = 0;
@@ -246,6 +265,9 @@ static lean_external_class *get_bio_class() {
 lean_obj_res lean_bio_init()
 {
   BIO* bio = BIO_new(BIO_s_mem());
+  if (bio == NULL) {
+    return lean_io_result_mk_error(lean_mk_string("BIO_new() failed"));
+  }
   return lean_io_result_mk_ok(lean_alloc_external(get_bio_class(), bio));
 }
 
@@ -273,6 +295,21 @@ lean_obj_res lean_bio_write(b_lean_obj_arg l_bio, b_lean_obj_arg bs)
   return lean_io_result_mk_ok(lean_box(b));
 }
 
+/**
+ * BIO.getSSL : @& BIO → IO SSL
+ */
+lean_obj_res lean_bio_get_ssl(lean_obj_arg l_bio)
+{
+  BIO* bio = lean_get_external_data(l_bio);
+  SSL* ssl = NULL;
+  BIO_get_ssl(bio, &ssl);
+  if (ssl == NULL) {
+    return lean_io_result_mk_error(lean_mk_io_error_other_error(0, lean_mk_string("BIO_get_ssl() is null")));
+  }
+  return lean_io_result_mk_ok(lean_alloc_external(get_ssl_class(), ssl));
+}
+
+
 // BIO ADDR
 
 static inline void bio_addr_finalize(void *bio)
@@ -298,6 +335,9 @@ static lean_external_class *get_bio_addr_class() {
 lean_obj_res lean_bio_addr_init()
 {
   BIO_ADDR * addr = BIO_ADDR_new();
+  if (addr == NULL) {
+    return lean_io_result_mk_error(lean_mk_string("BIO_ADDR_new() failed"));
+  }
   return lean_io_result_mk_ok(lean_alloc_external(get_bio_addr_class(), addr));
 }
 
@@ -314,7 +354,6 @@ lean_obj_res lean_bio_socket(uint32_t domain, uint32_t socktype, uint32_t protoc
   }
 }
 
-
 /**
  * Socket.connect (sock : Socket) (addr : Addr) : IO UInt32
  */
@@ -325,10 +364,40 @@ lean_obj_res lean_bio_connect(uint32_t sock, b_lean_obj_arg addr)
 }
 
 /**
+ * BIO.newSSLConnect (ctx : Context) : IO BIO
+ */
+lean_obj_res lean_bio_new_ssl_connect(lean_obj_arg context)
+{
+  BIO* bio = BIO_new_ssl_connect(lean_get_external_data(context));
+  if (bio == NULL) {
+    return lean_io_result_mk_error(lean_mk_io_error_other_error(0, lean_mk_string("BIO_new_ssl_connect() failed")));
+  }
+  return lean_io_result_mk_ok(lean_alloc_external(get_bio_class(), bio));
+}
+
+/**
  * Socket.close (socket : Socket) : IO UInt32
  */
 lean_obj_res lean_bio_closesocket(uint32_t sock)
 {
   uint32_t res = BIO_closesocket(sock);
+  return lean_io_result_mk_ok(lean_box(res));
+}
+
+/**
+ * BIO.setConnHostname (bio : BIO) (hostname : String) : IO UInt32
+ */
+lean_obj_res lean_bio_set_conn_hostname(lean_obj_arg bio, lean_obj_arg hostname)
+{
+  uint32_t res = BIO_set_conn_hostname(lean_get_external_data(bio), lean_string_cstr(hostname));
+  return lean_io_result_mk_ok(lean_box(res));
+}
+
+/**
+ * BIO.doConnect : IO UInt32
+ */
+lean_obj_res lean_bio_do_connect(lean_obj_arg bio)
+{
+  uint32_t res = BIO_do_connect(lean_get_external_data(bio));
   return lean_io_result_mk_ok(lean_box(res));
 }
