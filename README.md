@@ -1,6 +1,9 @@
 # OpenSSL bindings for lean (unfinished)
 
-Build with `nix build .`
+Build with `nix build .` or `nix develop --command lake build`.
+
+The bindings are mostly imperative and low level.
+See the [OpenSSL manpages](https://www.openssl.org/docs/man3.1/) for more details.
 
 ## Dev env
 

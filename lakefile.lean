@@ -2,12 +2,15 @@ import Lake
 open Lake DSL
 
 package OpenSSL {
-  precompileModules := true
-  moreLinkArgs := #["-L", "-lssl"]
+  precompileModules := false
+  moreLinkArgs := #["-L", "./build/lib", "-lssl", "-lcrypto", "-lffi"]
+  extraDepTargets := #["ffi"]
 }
 
 @[defaultTarget]
-lean_lib OpenSSL
+lean_lib OpenSSL {
+  srcDir := "src"
+}
 
 def cDir   := "native"
 def ffiSrc := "native.c"
@@ -19,10 +22,14 @@ target ffi.o (pkg : Package) : FilePath := do
   let srcJob ← inputFile <| pkg.dir / cDir / ffiSrc
   buildFileAfterDep oFile srcJob fun srcFile => do
     let flags := #["-I", (← getLeanIncludeDir).toString,
-      "/usr/include/openssl", "-fPIC"]
+      "-I", (<- IO.getEnv "C_INCLUDE_PATH").getD "", "-fPIC", "-g"]
     compileO ffiSrc oFile srcFile flags
 
-extern_lib ffi (pkg : Package) := do
+target ffi (pkg : Package) : FilePath := do
   let name := nameToStaticLib ffiLib
   let ffiO ← fetch <| pkg.target ``ffi.o
   buildStaticLib (pkg.buildDir / "lib" / name) #[ffiO]
+
+lean_exe test {
+  root := `test.Tests
+}
